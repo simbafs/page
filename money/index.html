@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Financial Analysis</title>
+		<script src="https://d3js.org/d3.v7.min.js"></script>
+	</head>
+	<body>
+		<h1>Financial Analysis</h1>
+		<p>這是一個網頁，可以把 <a href="https://play.google.com/store/apps/details?id=com.ktwapps.walletmanager&pcampaignid=web_share" target="_blank">Money Manager</a> 所匯出的 CSV 視覺化資料的網頁。大部分程式由 ChatGPT 完成，紀錄 <a href="https://chatgpt.com/share/676efb19-b1d8-800e-88ea-85f5573f454f">在這</a> 。</p>
+		<p>你可以在 錢包 > 設定 > 導出 找到匯出 CSV 的選項。種類選擇「紀錄」，格式選擇「.csv」，錢包、開始、結束按照你的需求選擇即可。</p>
+
+		<div id="file-upload">
+			<label for="csvFileInput">Upload CSV File:</label>
+			<input type="file" id="csvFileInput" accept=".csv" />
+		</div>
+
+		<div id="charts">
+			<h2>Line Charts</h2>
+			<div id="monthly-income-expense"></div>
+			<div id="monthly-net-change"></div>
+			<div id="cumulative-assets"></div>
+
+			<h2>Pie Charts</h2>
+			<div id="income-category"></div>
+			<div id="expense-category"></div>
+			<div id="wallet-usage"></div>
+		</div>
+
+		<script>
+			const data = []
+
+			document.getElementById('csvFileInput').addEventListener('change', function (event) {
+				const file = event.target.files[0]
+				if (file) {
+					const reader = new FileReader()
+					reader.onload = function (e) {
+						const text = e.target.result
+						const parsedData = d3.csvParse(text, d => {
+							return {
+								date: d.日期,
+								type: d.種類,
+								category: d.類別,
+								amount: +d.數目,
+								currency: d.貨幣,
+								memo: d.備忘錄,
+								wallet: d.錢包,
+							}
+						})
+						data.push(...parsedData)
+						processAndRenderCharts()
+					}
+					reader.readAsText(file)
+				}
+			})
+
+			function processAndRenderCharts() {
+				const parseDate = d3.timeParse('%Y/%m/%d %H:%M')
+				data.forEach(d => {
+					d.date = parseDate(d.date)
+				})
+
+				const monthlyData = d3.group(data, d => d3.timeFormat('%Y-%m')(d.date))
+				const monthlySummary = Array.from(monthlyData, ([month, entries]) => {
+					const income = d3.sum(
+						entries.filter(e => e.type === '收入'),
+						e => e.amount,
+					)
+					const expense = d3.sum(
+						entries.filter(e => e.type === '支出'),
+						e => -e.amount,
+					)
+					return { month, income, expense, net: income - expense }
+				})
+
+				const cumulativeAssets = []
+				let cumulative = 0
+				monthlySummary.forEach(d => {
+					cumulative += d.net
+					cumulativeAssets.push({ month: d.month, cumulative })
+				})
+
+				const incomeCategory = d3.rollup(
+					data.filter(d => d.type === '收入'),
+					v => d3.sum(v, d => d.amount),
+					d => d.category,
+				)
+
+				const expenseCategory = d3.rollup(
+					data.filter(d => d.type === '支出'),
+					v => d3.sum(v, d => -d.amount),
+					d => d.category,
+				)
+
+				const walletUsage = d3.rollup(
+					data.filter(d => d.type !== "轉賬"),
+					v => d3.sum(v, d => Math.abs(d.amount)),
+					d => d.wallet,
+				)
+
+				d3.selectAll('svg').remove() // Clear previous charts
+				createLineChart('#monthly-income-expense', monthlySummary, 'month', 'income', 'Monthly Income')
+				createLineChart('#monthly-net-change', monthlySummary, 'month', 'net', 'Monthly Net Change')
+				createLineChart('#cumulative-assets', cumulativeAssets, 'month', 'cumulative', 'Cumulative Assets')
+
+				createPieChart('#income-category', incomeCategory, 'Income by Category')
+				createPieChart('#expense-category', expenseCategory, 'Expense by Category')
+				createPieChart('#wallet-usage', walletUsage, 'Wallet Usage')
+			}
+
+			function createLineChart(container, chartData, xKey, yKey, title) {
+				const margin = { top: 20, right: 30, bottom: 40, left: 50 }
+				const width = 500 - margin.left - margin.right
+				const height = 300 - margin.top - margin.bottom
+
+				const svg = d3
+					.select(container)
+					.append('svg')
+					.attr('width', width + margin.left + margin.right)
+					.attr('height', height + margin.top + margin.bottom)
+					.append('g')
+					.attr('transform', `translate(${margin.left},${margin.top})`)
+
+				const x = d3
+					.scalePoint()
+					.domain(chartData.map(d => d[xKey]))
+					.range([0, width])
+
+				// Calculate mean and standard deviation for yKey
+				const yValues = chartData.map(d => d[yKey])
+				const mean = d3.mean(yValues)
+				const stdDev = d3.deviation(yValues)
+
+				const y = d3
+					.scaleLinear()
+					.domain([
+						0,
+						Math.min(
+							d3.max(chartData, d => d[yKey]),
+							mean + 2 * stdDev,
+						),
+					])
+					.nice()
+					.range([height, 0])
+
+				const line = d3
+					.line()
+					.x(d => x(d[xKey]))
+					.y(d => y(d[yKey]))
+
+				svg.append('path')
+					.datum(chartData)
+					.attr('fill', 'none')
+					.attr('stroke', 'steelblue')
+					.attr('stroke-width', 1.5)
+					.attr('d', line)
+
+				svg.append('g')
+					.attr('transform', `translate(0,${height})`)
+					.call(
+						d3.axisBottom(x).tickFormat((d, i) => {
+							const month = d.split('-')[1]
+							return month === '01' || month === '07' ? d : ''
+						}),
+					)
+
+				svg.append('g').call(d3.axisLeft(y))
+
+				svg.append('text')
+					.attr('x', width / 2)
+					.attr('y', -10)
+					.attr('text-anchor', 'middle')
+					.style('font-size', '16px')
+					.text(title)
+			}
+			function createPieChart(container, chartData, title) {
+				const margin = 40
+				const width = 600
+				const height = 300
+				const radius = Math.min(width, height) / 2 - margin
+
+				const svg = d3
+					.select(container)
+					.append('svg')
+					.attr('width', width)
+					.attr('height', height)
+					.append('g')
+					.attr('transform', `translate(${radius},${height / 2})`)
+
+				const color = d3.scaleOrdinal().domain(Array.from(chartData.keys())).range(d3.schemeSet2)
+
+				const pie = d3
+					.pie()
+					.value(d => d[1])
+					.sort((a, b) => b[1] - a[1])
+
+				const data_ready = pie(Array.from(chartData))
+
+				svg.selectAll('.arc')
+					.data(data_ready)
+					.enter()
+					.append('path')
+					.attr('d', d3.arc().innerRadius(0).outerRadius(radius))
+					.attr('fill', d => color(d.data[0]))
+					.attr('stroke', 'white')
+					.style('stroke-width', '2px')
+
+				const legend = d3
+					.select(container)
+					.append('div')
+					.style('display', 'inline-block')
+					.style('margin-left', '20px')
+
+				data_ready
+				    .toSorted((a, b) => b.value - a.value)
+				    .forEach(d => {
+					const percentage = (d.data[1] / d3.sum(data_ready, d => d.data[1])) * 100
+					if (percentage > 5) {
+						legend
+							.append('div')
+							.style('display', 'flex')
+							.style('align-items', 'center')
+							.style('margin-bottom', '5px').html(`
+                            <div style="width: 10px; height: 10px; background-color: ${color(d.data[0])}; margin-right: 5px;"></div>
+                            <div>${d.data[0]}: ${d.data[1]} (${percentage.toFixed(2)}%)</div>
+                        `)
+					}
+				})
+			}
+		</script>
+	</body>
+</html>
