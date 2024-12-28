@@ -2,6 +2,6 @@ some useful web page
 
 -   [x] money
 -   [x] big text
--   [ ] time
+-   [x] time
 -   [ ] countdown
 -   [ ] projection
