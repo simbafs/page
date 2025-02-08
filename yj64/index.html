@@ -3,7 +3,17 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+
 		<title>陰陽六四</title>
+
+		<link rel="icon" href="/yj64/favicon.png" type="image/png" />
+		<meta property="og:title" content="把文字變成易經六十四掛" />
+		<meta property="og:site_name" content="六十四掛" />
+		<meta property="og:url" content="https://page.simbafs.cc/yj64" />
+		<meta property="og:description" content="" />
+		<meta property="og:type" content="website" />
+		<meta property="og:image" content="https://page.simbafs.cc/yj64/og.png" />
+
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link
@@ -65,6 +75,7 @@
 			const showBase64 = document.getElementById('showBase64')
 
 			function base64ToNumber(txt) {
+				console.log('base64ToNumber', txt)
 				return [...txt].map(c => {
 					if ('A' <= c && c <= 'Z') return c.charCodeAt(0) - 'A'.charCodeAt(0)
 					else if ('a' <= c && c <= 'z') return c.charCodeAt(0) - 'a'.charCodeAt(0) + 26
@@ -76,6 +87,7 @@
 			}
 
 			function numberToBase64(num) {
+				console.log('numberToBase64', num)
 				return num.map(n => {
 					if (0 <= n && n <= 25) return String.fromCharCode(n + 'A'.charCodeAt(0))
 					else if (26 <= n && n <= 51) return String.fromCharCode(n - 26 + 'a'.charCodeAt(0))
@@ -87,26 +99,36 @@
 			}
 
 			function numberToYj(num) {
+				console.log('numberToYj', num)
 				return num.filter(i => i >= 0).map(n => String.fromCharCode(n + 0x4dc0))
 			}
 
 			function YjToNumber(yj) {
+				console.log('YjToNumber', yj)
 				return [...yj].map(c => c.charCodeAt(0) - 0x4dc0)
 			}
 
+			function base64ToText(base64) {
+				return decodeURIComponent(escape(atob(base64)))
+			}
+
+			function textToBase64(text) {
+				return btoa(unescape(encodeURIComponent(text)))
+			}
+
 			function encode() {
-				base64.value = btoa(text.value)
+				base64.value = textToBase64(text.value)
 				yj64.value = numberToYj(base64ToNumber(base64.value)).join('')
 			}
 
 			function decodeFromBase64() {
-				text = atob(base64.value)
+				text.value = base64ToText(base64.value)
 				yj64.value = numberToYj(base64ToNumber(base64.value)).join('')
 			}
 
 			function decodeFromYJ() {
 				base64.value = numberToBase64(YjToNumber(yj64.value)).join('')
-				text.value = atob(base64.value)
+				text.value = base64ToText(base64.value)
 			}
 
 			function setShotBase64() {
