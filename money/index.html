@@ -5,27 +5,88 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>Financial Analysis</title>
 		<script src="https://d3js.org/d3.v7.min.js"></script>
+		<style>
+			body {
+				font-family: sans-serif;
+				background-color: #f5f5f5;
+				margin: 0;
+				padding: 1rem;
+				color: #333;
+			}
+
+			h1, h2 {
+				text-align: center;
+			}
+
+			a {
+				color: #007bff;
+				text-decoration: none;
+			}
+			a:hover {
+				text-decoration: underline;
+			}
+
+			.card {
+				background-color: #ffffff;
+				border-radius: 12px;
+				box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+				padding: 1.5rem;
+				margin: 1rem auto;
+				max-width: 900px;
+			}
+
+			.card h2 {
+				margin-top: 0;
+			}
+
+			#file-upload input[type='file'] {
+				margin-top: 0.5rem;
+			}
+
+			#charts > .card {
+				margin-bottom: 2rem;
+			}
+
+			svg {
+				max-width: 100%;
+				height: auto;
+			}
+		</style>
 	</head>
 	<body>
 		<h1>Financial Analysis</h1>
-		<p>這是一個網頁，可以把 <a href="https://play.google.com/store/apps/details?id=com.ktwapps.walletmanager&pcampaignid=web_share" target="_blank">Money Manager</a> 所匯出的 CSV 視覺化資料的網頁。大部分程式由 ChatGPT 完成，紀錄 <a href="https://chatgpt.com/share/676efb19-b1d8-800e-88ea-85f5573f454f">在這</a> 。</p>
-		<p>你可以在 錢包 > 設定 > 導出 找到匯出 CSV 的選項。種類選擇「紀錄」，格式選擇「.csv」，錢包、開始、結束按照你的需求選擇即可。</p>
+		<div class="card">
+		<p>
+			這是一個網頁，可以把
+			<a
+				href="https://play.google.com/store/apps/details?id=com.ktwapps.walletmanager&pcampaignid=web_share"
+				target="_blank"
+				>Money Manager</a
+			>
+			所匯出的 CSV 視覺化資料的網頁。大部分程式由 ChatGPT 完成，紀錄
+			<a href="https://chatgpt.com/share/676efb19-b1d8-800e-88ea-85f5573f454f">在這</a> 。
+		</p>
+		<p>
+			你可以在 錢包 > 設定 > 導出 找到匯出 CSV
+			的選項。種類選擇「紀錄」，格式選擇「.csv」，錢包、開始、結束按照你的需求選擇即可。
+		</p>
+		</div>
 
-		<div id="file-upload">
+		<div id="file-upload" class="card">
 			<label for="csvFileInput">Upload CSV File:</label>
 			<input type="file" id="csvFileInput" accept=".csv" />
 		</div>
 
 		<div id="charts">
 			<h2>Line Charts</h2>
-			<div id="monthly-income-expense"></div>
-			<div id="monthly-net-change"></div>
-			<div id="cumulative-assets"></div>
+			<div class="card" id="monthly-income-expense"></div>
+			<div class="card" id="monthly-net-change"></div>
+			<div class="card" id="cumulative-assets"></div>
 
 			<h2>Pie Charts</h2>
-			<div id="income-category"></div>
-			<div id="expense-category"></div>
-			<div id="wallet-usage"></div>
+			<div class="card" id="income-category"></div>
+			<div class="card" id="expense-category"></div>
+			<div class="card" id="wallet-usage"></div>
 		</div>
 
 		<script>
@@ -94,7 +155,7 @@
 				)
 
 				const walletUsage = d3.rollup(
-					data.filter(d => d.type !== "轉賬"),
+					data.filter(d => d.type !== '轉賬'),
 					v => d3.sum(v, d => Math.abs(d.amount)),
 					d => d.wallet,
 				)
@@ -213,20 +274,20 @@
 					.style('margin-left', '20px')
 
 				data_ready
-				    .toSorted((a, b) => b.value - a.value)
-				    .forEach(d => {
-					const percentage = (d.data[1] / d3.sum(data_ready, d => d.data[1])) * 100
-					if (percentage > 5) {
-						legend
-							.append('div')
-							.style('display', 'flex')
-							.style('align-items', 'center')
-							.style('margin-bottom', '5px').html(`
+					.toSorted((a, b) => b.value - a.value)
+					.forEach(d => {
+						const percentage = (d.data[1] / d3.sum(data_ready, d => d.data[1])) * 100
+						if (percentage > 5) {
+							legend
+								.append('div')
+								.style('display', 'flex')
+								.style('align-items', 'center')
+								.style('margin-bottom', '5px').html(`
                             <div style="width: 10px; height: 10px; background-color: ${color(d.data[0])}; margin-right: 5px;"></div>
                             <div>${d.data[0]}: ${d.data[1]} (${percentage.toFixed(2)}%)</div>
                         `)
-					}
-				})
+						}
+					})
 			}
 		</script>
 	</body>
