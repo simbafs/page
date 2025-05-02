@@ -10,11 +10,15 @@
             <title>某一篇文章</title>
             <description>這是某一篇文章，關於我家超級可愛的花生</description>
             <content:encoded>我家花生剪指甲的時候不會反抗喔！</content:encoded>
+            <guid isPermaLink="true">https://simbafs.github.io/page/xslt/1</guid>
+            <pubDate>Fri, 02 May 2025 00:00:00 GMT</pubDate>
         </item>
         <item>
             <title>另一篇文章</title>
             <description>這是另一篇文章，關於我家超級可愛的花生如何玩他的廁所</description>
             <content:encoded>花生會把逗貓棒叼進廁所，然後壓在沙子上，但是又不會把他埋起來</content:encoded>
+            <guid isPermaLink="true">https://simbafs.github.io/page/xslt/2</guid>
+            <pubDate>Fri, 01 May 2025 00:00:00 GMT</pubDate>
         </item>
 
     </channel>
