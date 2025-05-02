@@ -78,17 +78,7 @@
 			<input type="file" id="csvFileInput" accept=".csv" />
 		</div>
 
-		<div id="charts">
-			<h2>Line Charts</h2>
-			<div class="card" id="monthly-income-expense"></div>
-			<div class="card" id="monthly-net-change"></div>
-			<div class="card" id="cumulative-assets"></div>
-
-			<h2>Pie Charts</h2>
-			<div class="card" id="income-category"></div>
-			<div class="card" id="expense-category"></div>
-			<div class="card" id="wallet-usage"></div>
-		</div>
+		<div id="charts"></div>
 
 		<script>
 			// Entity
@@ -168,7 +158,16 @@
 					d3.selectAll('svg').remove()
 				}
 
+				static createContainer(id) {
+					const container = document.createElement('div')
+					container.className = 'card'
+					container.id = id
+					document.getElementById('charts').appendChild(container)
+					return container
+				}
+
 				static renderLineChart(container, chartData, xKey, yKey, title) {
+					const c = this.createContainer(container)
 					const margin = { top: 20, right: 30, bottom: 40, left: 50 }
 					const width = 500 - margin.left - margin.right
 					const height = 300 - margin.top - margin.bottom
@@ -178,7 +177,7 @@
 					const stdDev = d3.deviation(yValues)
 
 					const svg = d3
-						.select(container)
+						.select(c)
 						.append('svg')
 						.attr('width', width + margin.left + margin.right)
 						.attr('height', height + margin.top + margin.bottom)
@@ -231,13 +230,15 @@
 				}
 
 				static renderPieChart(container, chartData, title) {
+					const c = this.createContainer(container)
+					console.log(c)
 					const margin = 40
 					const width = 600
 					const height = 300
 					const radius = Math.min(width, height) / 2 - margin
 
 					const svg = d3
-						.select(container)
+						.select(c)
 						.append('svg')
 						.attr('width', width)
 						.attr('height', height)
@@ -261,7 +262,7 @@
 						.style('stroke-width', '2px')
 
 					const legend = d3
-						.select(container)
+						.select(c)
 						.append('div')
 						.style('display', 'inline-block')
 						.style('margin-left', '20px')
@@ -276,9 +277,9 @@
 									.style('display', 'flex')
 									.style('align-items', 'center')
 									.style('margin-bottom', '5px').html(`
-                            <div style="width: 10px; height: 10px; background-color: ${color(d.data[0])}; margin-right: 5px;"></div>
-                            <div>${d.data[0]}: ${d.data[1]} (${percentage.toFixed(2)}%)</div>
-                        `)
+			                         <div style="width: 10px; height: 10px; background-color: ${color(d.data[0])}; margin-right: 5px;"></div>
+			                         <div>${d.data[0]}: ${d.data[1]} (${percentage.toFixed(2)}%)</div>
+			                     `)
 							}
 						})
 				}
