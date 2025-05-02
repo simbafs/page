@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet href="index.xsl" type="text/xsl"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/"
+    xmlns:h="http://www.w3.org/tr/html4/">
+    <channel>
+        <title>XSLT 測試</title>
+        <description>這是一個 XSLT 的測試頁面，理論上會使用 XSLT 把 xml 轉換成人類可讀的網頁，同時又可以是一個機器可讀的 RSS feed</description>
+        <link>https://simbafs.github.io/page</link>
+        <item>
+            <title>某一篇文章</title>
+            <description>這是某一篇文章，關於我家超級可愛的花生</description>
+            <content:encoded>我家花生剪指甲的時候不會反抗喔！</content:encoded>
+        </item>
+        <item>
+            <title>另一篇文章</title>
+            <description>這是另一篇文章，關於我家超級可愛的花生如何玩他的廁所</description>
+            <content:encoded>花生會把逗貓棒叼進廁所，然後壓在沙子上，但是又不會把他埋起來</content:encoded>
+        </item>
+
+    </channel>
+</rss>

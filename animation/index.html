@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>CSS Animation</title>
+		<style>
+			#circle {
+				height: 600px;
+				width: 800px;
+				border: 1px solid black;
+				border-radius: 10px;
+
+				display: grid;
+				place-items: center;
+			}
+
+			.rotater {
+				transform-origin: 0 0;
+				/* animation: rotate-out 3s linear infinite; */
+				position: absolute;
+				transform: rotate(0deg) translate(100px, 0px);
+			}
+
+			.rotater::before {
+				content: '';
+				display: block;
+				height: 50px;
+				width: 50px;
+				background-color: red;
+				position: absolute;
+
+				transform-origin: 50 50;
+				animation: rotate-before 0.5s linear infinite reverse;
+			}
+
+			.rotater::after {
+				content: '';
+				display: block;
+				height: 30px;
+				width: 30px;
+				background-color: black;
+				position: absolute;
+
+				transform-origin: 15px 20px;
+				animation: rotate-after 0.5s linear infinite reverse;
+			}
+
+			@keyframes rotate-out {
+				0% {
+					transform: rotate(0deg) translate(100px, 0px);
+				}
+				50% {
+					transform: rotate(180deg) translate(100px, 0px);
+				}
+				100% {
+					transform: rotate(360deg) translate(100px, 0px);
+				}
+			}
+
+			@keyframes rotate-before {
+				0% {
+					transform: rotate(0deg);
+				}
+				50% {
+					transform: rotate(180deg);
+				}
+				100% {
+					transform: rotate(360deg);
+				}
+			}
+			@keyframes rotate-after {
+				0% {
+					transform: rotate(0deg) translate(10px, 10px);
+				}
+				50% {
+					transform: rotate(180deg) translate(10px, 10px);
+				}
+				100% {
+					transform: rotate(360deg) translate(10px, 10px);
+				}
+			}
+
+			#a {
+				animation-delay: 0s;
+			}
+
+			#b {
+				animation-delay: 0.5s;
+			}
+
+			#c {
+				animation-delay: 1s;
+			}
+
+			#d {
+				animation-delay: 1.5s;
+			}
+
+			#e {
+				animation-delay: 2s;
+			}
+
+			#f {
+				animation-delay: 2.5s;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="circle">
+			<div class="rotater" id="a"></div>
+			<div class="rotater" id="b"></div>
+			<div class="rotater" id="c"></div>
+			<div class="rotater" id="d"></div>
+			<div class="rotater" id="e"></div>
+			<div class="rotater" id="f"></div>
+		</div>
+	</body>
+</html>
