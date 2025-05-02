@@ -158,16 +158,22 @@
 					d3.selectAll('svg').remove()
 				}
 
-				static createContainer(id) {
+				static createContainer() {
 					const container = document.createElement('div')
 					container.className = 'card'
-					container.id = id
 					document.getElementById('charts').appendChild(container)
 					return container
 				}
 
-				static renderLineChart(container, chartData, xKey, yKey, title) {
-					const c = this.createContainer(container)
+				static title(container, title) {
+					const titleElement = document.createElement('h2')
+					titleElement.innerText = title
+					container.appendChild(titleElement)
+				}
+
+				static renderLineChart(chartData, xKey, yKey, title) {
+					const container = this.createContainer()
+					this.title(container, title)
 					const margin = { top: 20, right: 30, bottom: 40, left: 50 }
 					const width = 500 - margin.left - margin.right
 					const height = 300 - margin.top - margin.bottom
@@ -177,7 +183,7 @@
 					const stdDev = d3.deviation(yValues)
 
 					const svg = d3
-						.select(c)
+						.select(container)
 						.append('svg')
 						.attr('width', width + margin.left + margin.right)
 						.attr('height', height + margin.top + margin.bottom)
@@ -220,25 +226,18 @@
 							}),
 						)
 					svg.append('g').call(d3.axisLeft(y))
-
-					svg.append('text')
-						.attr('x', width / 2)
-						.attr('y', -10)
-						.attr('text-anchor', 'middle')
-						.style('font-size', '16px')
-						.text(title)
 				}
 
-				static renderPieChart(container, chartData, title) {
-					const c = this.createContainer(container)
-					console.log(c)
+				static renderPieChart(chartData, title) {
+					const container = this.createContainer()
+					this.title(container, title)
 					const margin = 40
 					const width = 600
 					const height = 300
 					const radius = Math.min(width, height) / 2 - margin
 
 					const svg = d3
-						.select(c)
+						.select(container)
 						.append('svg')
 						.attr('width', width)
 						.attr('height', height)
@@ -262,7 +261,7 @@
 						.style('stroke-width', '2px')
 
 					const legend = d3
-						.select(c)
+						.select(container)
 						.append('div')
 						.style('display', 'inline-block')
 						.style('margin-left', '20px')
@@ -294,37 +293,19 @@
 						reader.onload = function (e) {
 							const text = e.target.result
 							const parsedData = TransactionProcessor.parseCSV(text)
-							ChartRenderer.clearPreviousCharts()
 							const monthlySummary = TransactionProcessor.processMonthlyData(parsedData)
 							const cumulativeAssets = TransactionProcessor.processCumulativeAssets(monthlySummary)
 							const incomeCategory = TransactionProcessor.processCategoryData(parsedData, '收入')
 							const expenseCategory = TransactionProcessor.processCategoryData(parsedData, '支出')
 							const walletUsage = TransactionProcessor.processWalletUsage(parsedData)
 
-							ChartRenderer.renderLineChart(
-								'#monthly-income-expense',
-								monthlySummary,
-								'month',
-								'income',
-								'Monthly Income',
-							)
-							ChartRenderer.renderLineChart(
-								'#monthly-net-change',
-								monthlySummary,
-								'month',
-								'net',
-								'Monthly Net Change',
-							)
-							ChartRenderer.renderLineChart(
-								'#cumulative-assets',
-								cumulativeAssets,
-								'month',
-								'cumulative',
-								'Cumulative Assets',
-							)
-							ChartRenderer.renderPieChart('#income-category', incomeCategory, 'Income by Category')
-							ChartRenderer.renderPieChart('#expense-category', expenseCategory, 'Expense by Category')
-							ChartRenderer.renderPieChart('#wallet-usage', walletUsage, 'Wallet Usage')
+							ChartRenderer.clearPreviousCharts()
+							ChartRenderer.renderLineChart(monthlySummary, 'month', 'income', 'Monthly Income')
+							ChartRenderer.renderLineChart(monthlySummary, 'month', 'net', 'Monthly Net Change')
+							ChartRenderer.renderLineChart(cumulativeAssets, 'month', 'cumulative', 'Cumulative Assets')
+							ChartRenderer.renderPieChart(incomeCategory, 'Income by Category')
+							ChartRenderer.renderPieChart(expenseCategory, 'Expense by Category')
+							ChartRenderer.renderPieChart(walletUsage, 'Wallet Usage')
 						}
 						reader.readAsText(file)
 					}
