@@ -168,6 +168,40 @@
 						d => d.wallet,
 					)
 				}
+
+				static processMonthlyExpenseByCategory(data) {
+					const filtered = data.filter(d => d.type === '支出')
+
+					// 計算所有分類總支出
+					const totalByCategory = d3.rollup(
+						filtered,
+						v => d3.sum(v, d => -d.amount),
+						d => d.category,
+					)
+
+					// 找出支出最高的前 5 類
+					const topCategories = Array.from(totalByCategory.entries())
+						.sort((a, b) => b[1] - a[1])
+						.slice(0, 5)
+						.map(d => d[0])
+
+					// group by category → month，僅保留 top 5
+					const grouped = d3.rollup(
+						filtered.filter(d => topCategories.includes(d.category)),
+						v => d3.sum(v, d => -d.amount),
+						d => d.category,
+						d => d3.timeFormat('%Y-%m')(d.date),
+					)
+
+					// 扁平化成陣列 [{category, month, amount}]
+					const result = []
+					for (const [category, monthMap] of grouped.entries()) {
+						for (const [month, amount] of monthMap.entries()) {
+							result.push({ category, month, amount })
+						}
+					}
+					return result
+				}
 			}
 
 			// Interface adapter
@@ -305,6 +339,81 @@
 							}
 						})
 				}
+
+				static renderMultiLineChart(data, xKey, yKey, groupKey, title) {
+					const container = this.createContainer()
+					this.title(container, title)
+
+					const parent = d3.select(container).node()
+					const fullWidth = parent.clientWidth
+
+					const margin = { top: 20, right: 30, bottom: 40, left: 50 }
+					const width = fullWidth - margin.left - margin.right
+					const height = 300 - margin.top - margin.bottom
+
+					const svg = d3
+						.select(container)
+						.append('svg')
+						.attr('width', width + margin.left + margin.right)
+						.attr('height', height + margin.top + margin.bottom)
+						.append('g')
+						.attr('transform', `translate(${margin.left},${margin.top})`)
+
+					const allGroups = Array.from(new Set(data.map(d => d[groupKey])))
+					const allX = Array.from(new Set(data.map(d => d[xKey]))).sort()
+
+					const color = d3.scaleOrdinal().domain(allGroups).range(d3.schemeTableau10)
+					const x = d3.scalePoint().domain(allX).range([0, width])
+					const y = d3
+						.scaleLinear()
+						.domain([0, d3.max(data, d => d[yKey])])
+						.nice()
+						.range([height, 0])
+
+					const line = d3
+						.line()
+						.x(d => x(d[xKey]))
+						.y(d => y(d[yKey]))
+
+					const dataGrouped = d3.group(data, d => d[groupKey])
+					dataGrouped.forEach((values, key) => {
+						svg.append('path')
+							.datum(values)
+							.attr('fill', 'none')
+							.attr('stroke', color(key))
+							.attr('stroke-width', 1.5)
+							.attr('d', line)
+					})
+
+					// x 軸只顯示 1 月、7 月
+					svg.append('g')
+						.attr('transform', `translate(0,${height})`)
+						.call(
+							d3.axisBottom(x).tickFormat(month => {
+								const m = month.split('-')[1]
+								return m === '01' || m === '07' ? month : ''
+							}),
+						)
+
+					svg.append('g').call(d3.axisLeft(y))
+
+					// ✅ 分類文字放在右側
+					const legend = d3
+						.select(container)
+						.append('div')
+						.style('margin-top', '0.5rem')
+						.style('display', 'flex')
+						.style('flex-wrap', 'wrap')
+						.style('gap', '1rem')
+
+					allGroups.forEach(group => {
+						legend.append('div').style('display', 'flex').style('align-items', 'center').style('gap', '6px')
+							.html(`
+				<div style="width: 10px; height: 10px; background-color: ${color(group)};"></div>
+				<div>${group}</div>
+			`)
+					})
+				}
 			}
 
 			// Framework and Driver
@@ -316,11 +425,23 @@
 						reader.onload = function (e) {
 							const text = e.target.result
 							const parsedData = TransactionProcessor.parseCSV(text)
+
 							const monthlySummary = TransactionProcessor.processMonthlyData(parsedData)
 							const cumulativeAssets = TransactionProcessor.processCumulativeAssets(monthlySummary)
 							const incomeCategory = TransactionProcessor.processCategoryData(parsedData, '收入')
 							const expenseCategory = TransactionProcessor.processCategoryData(parsedData, '支出')
 							const walletUsage = TransactionProcessor.processWalletUsage(parsedData)
+							const expenseTrendByCategory =
+								TransactionProcessor.processMonthlyExpenseByCategory(parsedData)
+
+							console.log({
+								monthlySummary,
+								cumulativeAssets,
+								incomeCategory,
+								expenseCategory,
+								walletUsage,
+								expenseTrendByCategory,
+							})
 
 							ChartRenderer.clearPreviousCharts()
 							ChartRenderer.renderLineChart(monthlySummary, 'month', 'income', 'Monthly Income')
@@ -329,6 +450,13 @@
 							ChartRenderer.renderPieChart(incomeCategory, 'Income by Category')
 							ChartRenderer.renderPieChart(expenseCategory, 'Expense by Category')
 							ChartRenderer.renderPieChart(walletUsage, 'Wallet Usage')
+							ChartRenderer.renderMultiLineChart(
+								expenseTrendByCategory,
+								'month',
+								'amount',
+								'category',
+								'Monthly Cumulative Expense by Category',
+							)
 						}
 						reader.readAsText(file)
 					}
