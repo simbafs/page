@@ -52,6 +52,24 @@
 				max-width: 100%;
 				height: auto;
 			}
+
+			.pie-chart {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				place-items: center;
+			}
+			.pie-chart :nth-child(1) {
+				grid-column: span 2;
+			}
+
+			@media (max-width: 600px) {
+				.pie-chart {
+					grid-template-columns: 1fr;
+				}
+				.pie-chart :nth-child(1) {
+					grid-column: unset;
+				}
+			}
 		</style>
 	</head>
 	<body>
@@ -158,9 +176,9 @@
 					d3.selectAll('svg').remove()
 				}
 
-				static createContainer() {
+				static createContainer(opts = {}) {
 					const container = document.createElement('div')
-					container.className = 'card'
+					container.className = 'card ' + (opts?.className || '')
 					document.getElementById('charts').appendChild(container)
 					return container
 				}
@@ -173,9 +191,14 @@
 
 				static renderLineChart(chartData, xKey, yKey, title) {
 					const container = this.createContainer()
+
 					this.title(container, title)
+
+					const parent = d3.select(container).node()
+					const fullWidth = parent.clientWidth // ⬅️ 取得容器寬度
+
 					const margin = { top: 20, right: 30, bottom: 40, left: 50 }
-					const width = 500 - margin.left - margin.right
+					const width = fullWidth - margin.left - margin.right
 					const height = 300 - margin.top - margin.bottom
 
 					const yValues = chartData.map(d => d[yKey])
@@ -229,20 +252,23 @@
 				}
 
 				static renderPieChart(chartData, title) {
-					const container = this.createContainer()
+					const container = this.createContainer({ className: 'pie-chart' })
+
 					this.title(container, title)
-					const margin = 40
-					const width = 600
-					const height = 300
-					const radius = Math.min(width, height) / 2 - margin
+
+					const parent = d3.select(container).node()
+					const fullWidth = parent.clientWidth // ⬅️ 取得容器寬度
+
+					const size = Math.min(fullWidth / 2 - 40, 300) // ⬅️ 設定圓形圖的大小
+					const radius = size / 2
 
 					const svg = d3
 						.select(container)
 						.append('svg')
-						.attr('width', width)
-						.attr('height', height)
+						.attr('width', size)
+						.attr('height', size)
 						.append('g')
-						.attr('transform', `translate(${radius},${height / 2})`)
+						.attr('transform', `translate(${radius},${radius})`)
 
 					const color = d3.scaleOrdinal().domain(Array.from(chartData.keys())).range(d3.schemeSet2)
 					const pie = d3
@@ -260,11 +286,8 @@
 						.attr('stroke', 'white')
 						.style('stroke-width', '2px')
 
-					const legend = d3
-						.select(container)
-						.append('div')
-						.style('display', 'inline-block')
-						.style('margin-left', '20px')
+					const legend = d3.select(container).append('div')
+					// .style('display', 'inline-block')
 
 					data_ready
 						.toSorted((a, b) => b.value - a.value)
