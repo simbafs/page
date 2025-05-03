@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Money Manager Analysis</title>
+		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+		<script src="https://d3js.org/d3.v7.min.js"></script>
+		<style>
+			body {
+				font-family: sans-serif;
+				background-color: #f5f5f5;
+				margin: 0;
+				padding: 1rem;
+				color: #333;
+			}
+			h1,
+			h2 {
+				text-align: center;
+			}
+			.card {
+				background-color: #fff;
+				border-radius: 12px;
+				box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+				padding: 1.5rem;
+				margin: 1rem auto;
+				max-width: 900px;
+			}
+			canvas {
+				max-width: 100%;
+				height: auto;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Money Manager Analysis</h1>
+		<div class="card">
+			<p>上傳 Money Manager 匯出 CSV 進行資料視覺化分析。</p>
+			<input type="file" id="csvFileInput" accept=".csv" />
+		</div>
+		<div id="charts"></div>
+
+		<script>
+			/**
+			 * Represents a single transaction entry.
+			 */
+			class Transaction {
+				/**
+				 * @param {string} date - The date of the transaction.
+				 * @param {string} type - Type: '收入', '支出', etc.
+				 * @param {string} category - Transaction category.
+				 * @param {number} amount - Amount of money.
+				 * @param {string} currency - Currency unit.
+				 * @param {string} memo - Additional notes.
+				 * @param {string} wallet - Wallet name.
+				 */
+				constructor(date, type, category, amount, currency, memo, wallet) {
+					this.date = new Date(date)
+					this.type = type
+					this.category = category
+					this.amount = +amount
+					this.currency = currency
+					this.memo = memo
+					this.wallet = wallet
+				}
+			}
+
+			class Processor {
+				/**
+				 * Parse CSV string into an array of Transaction objects.
+				 * @param {string} text - CSV content.
+				 * @returns {Transaction[]}
+				 */
+				static parseCSV(text) {
+					return d3.csvParse(
+						text,
+						d => new Transaction(d.日期, d.種類, d.類別, d.數目, d.貨幣, d.備忘錄, d.錢包),
+					)
+				}
+
+				/** @typedef {{ labels: string[], data: Record<string, number[]> }} Table */
+
+				/**
+				 * Group transactions by month and category into a tabular format.
+				 * @param {Transaction[]} data - Array of transactions.
+				 * @param {'收入'|'支出'} type - Filter by type.
+				 * @returns {Table}
+				 */
+				static groupMonthly(data, type) {
+					const filtered = data.filter(d => d.type === type)
+					const monthSet = new Set()
+					const categoryMap = new Map()
+
+					filtered.forEach(d => {
+						const month = d3.timeFormat('%Y-%m')(d.date)
+						monthSet.add(month)
+						if (!categoryMap.has(d.category)) categoryMap.set(d.category, new Map())
+						const m = categoryMap.get(d.category)
+						m.set(month, (m.get(month) || 0) + d.amount)
+					})
+
+					const labels = Array.from(monthSet).sort()
+					const result = {}
+
+					for (const [cat, monthMap] of categoryMap.entries()) {
+						result[cat] = labels.map(m => monthMap.get(m) || 0)
+					}
+
+					return { labels, data: result }
+				}
+
+				/**
+				 * Calculate monthly income, expense, and net change.
+				 * @param {Table} income - Income data.
+				 * @param {Table} expense - Expense data.
+				 * @return {{month: string[], income: number[], expense: number[], net: number[]}}
+				 */
+				static monthly(income, expense) {
+					const months = income.labels
+					const incomeData = income.data
+					const expenseData = expense.data
+
+					const result = {
+						month: months,
+						income: d3.zip(...Object.values(incomeData)).map(arr => d3.sum(arr)),
+						expense: d3.zip(...Object.values(expenseData)).map(arr => d3.sum(arr)),
+						net: [],
+					}
+
+					for (let i = 0; i < months.length; i++) {
+						result.net[i] = result.income[i] + result.expense[i]
+					}
+
+					return result
+				}
+
+				/**
+				 * Sum a row of a table.
+				 * @param {Table} table - The table to sum.
+				 * @returns {Record<string, number>}
+				 */
+				static sumRows(table) {
+					const result = {}
+					for (const [cat, data] of Object.entries(table.data)) {
+						result[cat] = d3.sum(data)
+					}
+					return result
+				}
+			}
+
+			class ChartRenderer {
+				/**
+				 * Render a Chart.js chart and insert into a new card.
+				 * @param {string} title - Chart title.
+				 * @param {"line"|"pie"|"bar"} type - Chart type.
+				 * @param {object} data - Chart.js data object.
+				 * @param {object} [options] - Optional Chart.js options.
+				 * @returns {Chart}
+				 */
+				static renderChart(title, type, data, options) {
+					const card = document.createElement('div')
+					card.className = 'card'
+					const h2 = document.createElement('h2')
+					h2.textContent = title
+					const canvas = document.createElement('canvas')
+					card.appendChild(h2)
+					card.appendChild(canvas)
+					document.getElementById('charts').appendChild(card)
+					return new Chart(canvas.getContext('2d'), {
+						type,
+						data,
+						options,
+					})
+				}
+			}
+
+			document.getElementById('csvFileInput').addEventListener('change', function (event) {
+				/**
+				 * Handle file upload event.
+				 * @param {Event} event
+				 */
+				const file = event.target.files[0]
+				if (file) {
+					const reader = new FileReader()
+					reader.onload = function (e) {
+						/** @type {string} */
+						const text = e.target.result
+						const data = Processor.parseCSV(text)
+
+						const income = Processor.groupMonthly(data, '收入')
+						const expense = Processor.groupMonthly(data, '支出')
+						const monthly = Processor.monthly(income, expense)
+
+						console.log(income, expense, monthly)
+
+						// const monthly = TransactionProcessor.processMonthlyData(data)
+						// const incomeCategory = TransactionProcessor.processCategoryData(data, '收入')
+						// const expenseCategory = TransactionProcessor.processCategoryData(data, '支出')
+
+						document.getElementById('charts').innerHTML = ''
+
+						ChartRenderer.renderChart('Monthly Income and Expense', 'line', {
+							labels: monthly.month,
+							datasets: [
+								{
+									label: 'Income',
+									data: monthly.income,
+									fill: false,
+								},
+								{
+									label: 'Income',
+									data: monthly.expense,
+									fill: false,
+								},
+								{
+									label: 'Net Change',
+									data: monthly.net,
+									fill: false,
+								},
+							],
+						})
+
+						ChartRenderer.renderChart('Income by Category', 'line', {
+							labels: income.labels,
+							datasets: Object.entries(income.data).map(([cat, data]) => ({
+								label: cat,
+								data,
+								fill: false,
+							})),
+						})
+
+						ChartRenderer.renderChart('Expense by Category', 'line', {
+							labels: expense.labels,
+							datasets: Object.entries(expense.data).map(([cat, data]) => ({
+								label: cat,
+								data: data.map(d => -d),
+								fill: false,
+							})),
+						})
+
+						const totalIncome = Processor.sumRows(income)
+						ChartRenderer.renderChart('Total Income by Category', 'pie', {
+							labels: Object.keys(totalIncome),
+							datasets: [
+								{
+									label: 'Income',
+									data: Object.values(totalIncome).toSorted((a, b) => b - a),
+								},
+							],
+						})
+
+						const totalExpense = Processor.sumRows(expense)
+						ChartRenderer.renderChart('Total expense by Category', 'pie', {
+							labels: Object.keys(totalExpense),
+							datasets: [
+								{
+									label: 'expense',
+									data: Object.values(totalExpense)
+										.map(d => -d)
+										.toSorted((a, b) => b - a),
+								},
+							],
+						})
+					}
+					reader.readAsText(file)
+				}
+			})
+		</script>
+	</body>
+</html>
